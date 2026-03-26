@@ -76,6 +76,21 @@
     .config-input:focus { border-color: var(--accent); }
     .config-err { font-family: 'DM Mono', monospace; font-size: 11px; color: #EF4444; margin-bottom: 16px; display: none; }
     .btn-primary { width: 100%; padding: 14px; background: var(--dark); color: #fff; border: none; border-radius: 12px; font-family: 'DM Mono', monospace; font-size: 13px; cursor: pointer; letter-spacing: 1px; }
+    /* Notes */
+    .sheet-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+    .note-btn { background: none; border: none; cursor: pointer; font-size: 20px; padding: 4px 6px; border-radius: 8px; transition: background 0.15s; -webkit-tap-highlight-color: transparent; line-height: 1; }
+    .note-btn:active { background: #f0eeff; }
+    .note-btn.has-note { position: relative; }
+    .note-btn.has-note::after { content: ''; position: absolute; top: 4px; right: 4px; width: 7px; height: 7px; background: var(--accent); border-radius: 99px; border: 2px solid #fff; }
+    .note-view { animation: up 0.18s ease; }
+    .note-back { display: flex; align-items: center; gap: 8px; background: none; border: none; cursor: pointer; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--light); padding: 0; margin-bottom: 20px; -webkit-tap-highlight-color: transparent; }
+    .note-back:active { opacity: 0.6; }
+    .note-textarea { width: 100%; min-height: 160px; padding: 14px 16px; border: 2px solid var(--border); border-radius: 14px; font-family: 'DM Sans', sans-serif; font-size: 15px; color: var(--dark); background: #fafafa; outline: none; resize: none; line-height: 1.6; transition: border-color 0.15s; }
+    .note-textarea:focus { border-color: var(--accent); background: #fff; }
+    .note-save { width: 100%; padding: 13px; background: var(--accent); color: #fff; border: none; border-radius: 12px; cursor: pointer; font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: 1px; margin-top: 10px; -webkit-tap-highlight-color: transparent; }
+    .note-save:active { opacity: 0.85; }
+    .note-hint { font-family: 'DM Mono', monospace; font-size: 10px; color: #ccc; text-align: center; margin-top: 10px; }
+    .card-note-dot { display: inline-block; width: 6px; height: 6px; background: var(--accent); border-radius: 99px; margin-left: 5px; vertical-align: middle; }
   </style>
 </head>
 <body>
@@ -88,28 +103,45 @@ const DAYS=["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"
 const DEF=Object.fromEntries(SPACES.map(s=>[s.id,2]));
 const getSt=id=>STATES.find(s=>s.id===id)||STATES[3];
 
-let map={...DEF},picking=null,status="config",dbUrl=localStorage.getItem("prisma-db-url")||"",es=null,saveTimer=null,exporting=false;
+let map={...DEF},notes={},picking=null,viewingNotes=false,status="config",dbUrl=localStorage.getItem("prisma-db-url")||"",es=null,saveTimer=null,noteTimer=null,exporting=false;
 
 // ── Firebase ──
-const fbUrl=()=>dbUrl.replace(/\/$/,"")+"/hogar.json";
-async function fbGet(){const r=await fetch(fbUrl());if(!r.ok)throw new Error();return await r.json()||{};}
-async function fbSet(d){const r=await fetch(fbUrl(),{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(d)});if(!r.ok)throw new Error();}
+const fbStatesUrl=()=>dbUrl.replace(/\/$/,"")+"/hogar/states.json";
+const fbNotesUrl=()=>dbUrl.replace(/\/$/,"")+"/hogar/notes.json";
+const fbRootUrl=()=>dbUrl.replace(/\/$/,"")+"/hogar.json";
+async function fbGet(){const r=await fetch(fbRootUrl());if(!r.ok)throw new Error();const d=await r.json()||{};return d;}
+async function fbSetStates(d){const r=await fetch(fbStatesUrl(),{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(d)});if(!r.ok)throw new Error();}
+async function fbSetNote(id,txt){const r=await fetch(dbUrl.replace(/\/$/,"")+`/hogar/notes/${id}.json`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(txt)});if(!r.ok)throw new Error();}
 
 function listen(){
   if(es){es.close();}
   es=new EventSource(dbUrl.replace(/\/$/,"")+"/hogar.json");
-  es.addEventListener("put",e=>{try{const m=JSON.parse(e.data);if(m.data&&typeof m.data==="object"){map={...DEF,...m.data};status="live";render();}}catch(err){}});
-  es.addEventListener("patch",e=>{try{const m=JSON.parse(e.data);if(m.data){map={...map,...m.data};status="live";render();}}catch(err){}});
+  es.addEventListener("put",e=>{try{const m=JSON.parse(e.data);if(m.data&&typeof m.data==="object"){
+    map={...DEF,...(m.data.states||m.data)};
+    notes={...(m.data.notes||{})};
+    status="live";render();
+  }}catch(err){}});
+  es.addEventListener("patch",e=>{try{const m=JSON.parse(e.data);if(m.data){
+    if(m.data.states)map={...map,...m.data.states};
+    if(m.data.notes)notes={...notes,...m.data.notes};
+    status="live";render();
+  }}catch(err){}});
   es.onerror=()=>{status="error";render();setTimeout(()=>{if(dbUrl)listen();},4000);};
 }
 
 async function init(){
   if(!dbUrl){status="config";render();return;}
-  try{status="connecting";render();const d=await fbGet();map={...DEF,...d};status="live";render();listen();}
-  catch(e){status="error";render();}
+  try{
+    status="connecting";render();
+    const d=await fbGet();
+    map={...DEF,...(d.states||d)};
+    notes={...(d.notes||{})};
+    status="live";render();listen();
+  }catch(e){status="error";render();}
 }
 
-function schedSave(m){clearTimeout(saveTimer);saveTimer=setTimeout(async()=>{status="saving";render();try{await fbSet(m);status="live";}catch(e){status="error";}render();},700);}
+function schedSave(m){clearTimeout(saveTimer);saveTimer=setTimeout(async()=>{status="saving";render();try{await fbSetStates(m);status="live";}catch(e){status="error";}render();},700);}
+function schedSaveNote(id,txt){clearTimeout(noteTimer);noteTimer=setTimeout(async()=>{try{await fbSetNote(id,txt);}catch(e){console.error(e);}},800);}
 
 // ── Export PNG ──
 function exportPNG(){
@@ -190,11 +222,11 @@ function render(){
   const crit=SPACES.filter(s=>map[s.id]===0);
 
   function cardH(id,isT){
-    const sp=SPACES.find(s=>s.id===id),st=getSt(map[id]);
+    const sp=SPACES.find(s=>s.id===id),st=getSt(map[id]),hasNote=!!(notes[id]&&notes[id].trim());
     return`<div class="card" data-id="${id}" style="border-color:${isT?st.color:"#ebebeb"}${isT?`;box-shadow:0 0 0 3px ${st.color}33`:""}">
       ${isT?`<div class="badge" style="background:${st.color}">hoy</div>`:""}
       <div class="card-top">
-        <div class="card-name"><span style="font-size:18px">${sp.icon}</span><span class="card-title">${sp.name}</span></div>
+        <div class="card-name"><span style="font-size:18px">${sp.icon}</span><span class="card-title">${sp.name}${hasNote?'<span class="card-note-dot"></span>':""}</span></div>
         <span style="font-size:18px">${st.symbol}</span>
       </div>
       <div class="card-pill" style="background:${st.bg};color:${st.text}">${st.short}</div>
@@ -236,24 +268,44 @@ function render(){
   </div>
   ${picking?`<div class="overlay" id="ov"><div class="sheet">
     <div class="handle"></div>
-    <div class="sheet-title">${SPACES.find(s=>s.id===picking).icon} ${SPACES.find(s=>s.id===picking).name}</div>
-    <div class="sheet-sub">Selecciona el estado actual</div>
+    ${viewingNotes?`
+    <div class="note-view">
+      <button class="note-back" id="bnb">← ${SPACES.find(s=>s.id===picking).icon} ${SPACES.find(s=>s.id===picking).name}</button>
+      <textarea class="note-textarea" id="note-ta" placeholder="Anotaciones, pendientes, recordatorios...">${(notes[picking]||"").replace(/"/g,"&quot;")}</textarea>
+      <button class="note-save" id="bns">Guardar nota</button>
+      <div class="note-hint">se sincroniza en tiempo real</div>
+    </div>`:`
+    <div class="sheet-header">
+      <div>
+        <div class="sheet-title">${SPACES.find(s=>s.id===picking).icon} ${SPACES.find(s=>s.id===picking).name}</div>
+        <div class="sheet-sub">Selecciona el estado actual</div>
+      </div>
+      <button class="note-btn${notes[picking]&&notes[picking].trim()?" has-note":""}" id="bnote">🗒️</button>
+    </div>
     ${STATES.map(st=>`<div class="opt" data-st="${st.id}" style="${map[picking]===st.id?`background:${st.bg};border-color:${st.color}`:""}">
       <span class="opt-sym">${st.symbol}</span>
       <span class="opt-label" style="color:${st.text};font-weight:${map[picking]===st.id?700:400}">${st.label}</span>
       ${map[picking]===st.id?`<span style="color:${st.color};font-size:16px">✓</span>`:""}
     </div>`).join("")}
-    <button class="btn-cancel" id="bcl">cancelar</button>
+    <button class="btn-cancel" id="bcl">cancelar</button>`}
   </div></div>`:""}`;
 
   // events
-  document.querySelectorAll(".card").forEach(el=>el.addEventListener("click",()=>{picking=el.dataset.id;render();}));
+  document.querySelectorAll(".card").forEach(el=>el.addEventListener("click",()=>{picking=el.dataset.id;viewingNotes=false;render();}));
   document.getElementById("bex")?.addEventListener("click",exportPNG);
   document.getElementById("bcfg")?.addEventListener("click",()=>{status="config";render();});
-  document.getElementById("ov")?.addEventListener("click",e=>{if(e.target.id==="ov"){picking=null;render();}});
-  document.getElementById("bcl")?.addEventListener("click",()=>{picking=null;render();});
+  document.getElementById("ov")?.addEventListener("click",e=>{if(e.target.id==="ov"){picking=null;viewingNotes=false;render();}});
+  document.getElementById("bcl")?.addEventListener("click",()=>{picking=null;viewingNotes=false;render();});
+  document.getElementById("bnote")?.addEventListener("click",()=>{viewingNotes=true;render();setTimeout(()=>document.getElementById("note-ta")?.focus(),50);});
+  document.getElementById("bnb")?.addEventListener("click",()=>{viewingNotes=false;render();});
+  document.getElementById("bns")?.addEventListener("click",()=>{
+    const txt=document.getElementById("note-ta")?.value||"";
+    notes={...notes,[picking]:txt};
+    schedSaveNote(picking,txt);
+    viewingNotes=false;render();
+  });
   document.querySelectorAll(".opt").forEach(el=>el.addEventListener("click",()=>{
-    const ns=parseInt(el.dataset.st);map={...map,[picking]:ns};picking=null;render();schedSave(map);
+    const ns=parseInt(el.dataset.st);map={...map,[picking]:ns};picking=null;viewingNotes=false;render();schedSave(map);
   }));
 }
 
