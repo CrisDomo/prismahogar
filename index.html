@@ -45,7 +45,7 @@
     .card-name { display: flex; align-items: center; gap: 8px; }
     .card-title { font-size: 13px; font-weight: 600; color: var(--dark); }
     .card-pill { display: inline-block; font-family: 'DM Mono', monospace; font-size: 10px; padding: 3px 10px; border-radius: 99px; font-weight: 500; }
-    .loading { display: flex; align-items: center; justify-content: center; height: 200px; font-family: 'DM Mono', monospace; font-size: 13px; color: var(--light); }
+    .loading { display: flex; align-items: center; justify-content: center; height: 100vh; font-family: 'DM Mono', monospace; font-size: 13px; color: var(--light); }
     .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: flex; align-items: flex-end; justify-content: center; z-index: 200; }
     .sheet { background: var(--white); border-radius: 24px 24px 0 0; padding: 28px 24px 44px; width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; animation: up 0.22s ease; }
     @keyframes up { from { transform: translateY(40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
@@ -66,7 +66,6 @@
     .btn-export:disabled { background: var(--soft); color: var(--accent); cursor: default; }
     .btn-sm { width: 100%; padding: 10px; background: none; border: 1px solid var(--border); border-radius: 12px; cursor: pointer; font-family: 'DM Mono', monospace; font-size: 10px; color: #ccc; margin-bottom: 10px; }
     .hint { text-align: center; font-family: 'DM Mono', monospace; font-size: 10px; color: #ccc; }
-    /* Config */
     .config-screen { position: fixed; inset: 0; background: var(--bg); z-index: 300; display: flex; align-items: center; justify-content: center; padding: 24px; }
     .config-card { background: var(--white); border-radius: 20px; padding: 32px 28px; width: 100%; max-width: 400px; box-shadow: 0 8px 40px rgba(0,0,0,0.1); }
     .config-title { font-family: 'DM Serif Display', serif; font-size: 26px; color: var(--dark); margin-bottom: 8px; }
@@ -76,7 +75,6 @@
     .config-input:focus { border-color: var(--accent); }
     .config-err { font-family: 'DM Mono', monospace; font-size: 11px; color: #EF4444; margin-bottom: 16px; display: none; }
     .btn-primary { width: 100%; padding: 14px; background: var(--dark); color: #fff; border: none; border-radius: 12px; font-family: 'DM Mono', monospace; font-size: 13px; cursor: pointer; letter-spacing: 1px; }
-    /* Notes */
     .sheet-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
     .note-btn { background: none; border: none; cursor: pointer; font-size: 20px; padding: 4px 6px; border-radius: 8px; transition: background 0.15s; -webkit-tap-highlight-color: transparent; line-height: 1; }
     .note-btn:active { background: #f0eeff; }
@@ -91,7 +89,6 @@
     .note-save:active { opacity: 0.85; }
     .note-hint { font-family: 'DM Mono', monospace; font-size: 10px; color: #ccc; text-align: center; margin-top: 10px; }
     .card-note-dot { display: inline-block; width: 6px; height: 6px; background: var(--accent); border-radius: 99px; margin-left: 5px; vertical-align: middle; }
-    /* Chat */
     .chat-btn { position: relative; background: none; border: none; cursor: pointer; font-size: 22px; padding: 4px; line-height: 1; -webkit-tap-highlight-color: transparent; }
     .chat-btn .unread { position: absolute; top: 0; right: 0; min-width: 16px; height: 16px; background: #EF4444; border-radius: 99px; border: 2px solid #fff; font-family: 'DM Mono', monospace; font-size: 9px; color: #fff; display: flex; align-items: center; justify-content: center; padding: 0 3px; }
     .chat-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: flex; align-items: flex-end; justify-content: center; z-index: 250; }
@@ -115,7 +112,6 @@
     .chat-input:focus { border-color: var(--accent); background: #fff; }
     .chat-send { width: 44px; height: 44px; background: var(--accent); border: none; border-radius: 99px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; -webkit-tap-highlight-color: transparent; transition: opacity 0.15s; }
     .chat-send:active { opacity: 0.8; }
-    /* User picker */
     .user-screen { position: fixed; inset: 0; background: var(--bg); z-index: 400; display: flex; align-items: center; justify-content: center; padding: 24px; }
     .user-card { background: var(--white); border-radius: 20px; padding: 36px 28px; width: 100%; max-width: 340px; box-shadow: 0 8px 40px rgba(0,0,0,0.1); text-align: center; }
     .user-title { font-family: 'DM Serif Display', serif; font-size: 26px; color: var(--dark); margin-bottom: 8px; }
@@ -128,132 +124,101 @@
   </style>
 </head>
 <body>
-<div id="root"><div class="loading">cargando...</div></div>
+<div id="root"><div class="loading">Iniciando Sistema Prisma...</div></div>
+
 <script>
+// --- CONFIGURACIÓN Y CONSTANTES ---
 const SPACES=[{id:"jardin",name:"Jardín delantero",icon:"🌿"},{id:"auto",name:"Auto",icon:"🚗"},{id:"living",name:"Living",icon:"🛋️"},{id:"cocina",name:"Cocina",icon:"🍳"},{id:"bano",name:"Baño",icon:"🚿"},{id:"pasillo",name:"Pasillo",icon:"🚪"},{id:"pieza",name:"Pieza",icon:"🛏️"},{id:"oficina",name:"Oficina",icon:"💻"},{id:"pieza_atras",name:"Pieza de atrás",icon:"📦"},{id:"patio",name:"Patio",icon:"☀️"},{id:"pasillo_patio",name:"Pasillo patio",icon:"🌀"},{id:"bodegas",name:"Bodegas",icon:"🗄️"}];
 const STATES=[{id:5,symbol:"✦",label:"Ordenado y adornado",short:"Adornado",color:"#6C63FF",bg:"#f0eeff",text:"#3d3580"},{id:4,symbol:"🟦",label:"Ordenado (interior)",short:"Interior OK",color:"#3B82F6",bg:"#eff6ff",text:"#1d4ed8"},{id:3,symbol:"🟩",label:"Ordenado (exterior)",short:"Exterior OK",color:"#22C55E",bg:"#f0fdf4",text:"#15803d"},{id:2,symbol:"🟨",label:"Desordenado habitable",short:"Habitable",color:"#EAB308",bg:"#fefce8",text:"#854d0e"},{id:1,symbol:"🟧",label:"Desordenado incómodo",short:"Incómodo",color:"#F97316",bg:"#fff7ed",text:"#9a3412"},{id:0,symbol:"🟥",label:"Insulto a la dignidad",short:"Crítico",color:"#EF4444",bg:"#fef2f2",text:"#991b1b"}];
 const WEEKLY={1:["living","cocina"],2:["bano","pasillo"],3:["pieza","oficina"],4:["pieza_atras","patio"],5:["pasillo_patio","bodegas"],6:["jardin","auto"],0:[]};
 const DAYS=["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
 const DEF=Object.fromEntries(SPACES.map(s=>[s.id,2]));
+const USERS={Cris:{color:"#6C63FF",avatar:"🧔"},Syl:{color:"#FF6B9D",avatar:"👩"}};
+
 const getSt=id=>STATES.find(s=>s.id===id)||STATES[3];
 
-let map={...DEF},notes={},messages=[],picking=null,viewingNotes=false,chatOpen=false,status="config",dbUrl=localStorage.getItem("prisma-db-url")||"",currentUser=localStorage.getItem("prisma-user")||"",es=null,chatEs=null,saveTimer=null,noteTimer=null,exporting=false,lastReadTs=parseInt(localStorage.getItem("prisma-last-read")||"0");
+// --- ESTADO GLOBAL ---
+let map={...DEF}, notes={}, messages=[], picking=null, viewingNotes=false, chatOpen=false;
+let status="loading", dbUrl=localStorage.getItem("prisma-db-url")||"", currentUser=localStorage.getItem("prisma-user")||"";
+let es=null, chatEs=null, saveTimer=null, noteTimer=null, exporting=false, lastReadTs=parseInt(localStorage.getItem("prisma-last-read")||"0");
 
-const USERS={
-  Cris:{color:"#6C63FF",avatar:"🧔"},
-  Syl:{color:"#FF6B9D",avatar:"👩"}
-};
+// --- LÓGICA DE INICIO ---
+async function init() {
+  if (!dbUrl) { status = "config"; render(); return; }
+  if (!currentUser) { renderUserPicker(); return; }
 
-// ── Firebase ──
-const fbStatesUrl=()=>dbUrl.replace(/\/$/,"")+"/hogar/states.json";
-const fbNotesUrl=()=>dbUrl.replace(/\/$/,"")+"/hogar/notes.json";
-const fbRootUrl=()=>dbUrl.replace(/\/$/,"")+"/hogar.json";
-const fbChatUrl=()=>dbUrl.replace(/\/$/,"")+"/chat.json";
-async function fbGet(){const r=await fetch(fbRootUrl());if(!r.ok)throw new Error();const d=await r.json()||{};return d;}
-async function fbSetStates(d){const r=await fetch(fbStatesUrl(),{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(d)});if(!r.ok)throw new Error();}
-async function fbSetNote(id,txt){const r=await fetch(dbUrl.replace(/\/$/,"")+`/hogar/notes/${id}.json`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(txt)});if(!r.ok)throw new Error();}
-async function fbPushMsg(msg){const r=await fetch(fbChatUrl(),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(msg)});if(!r.ok)throw new Error();}
-async function fbGetChat(){const r=await fetch(fbChatUrl());if(!r.ok)return[];const d=await r.json();if(!d)return[];return Object.values(d).sort((a,b)=>a.ts-b.ts);}
+  try {
+    status = "connecting"; render();
+    const cleanUrl = dbUrl.replace(/\/$/, "");
+    const r = await fetch(cleanUrl + "/hogar.json");
+    if(!r.ok) throw new Error();
+    const d = await r.json() || {};
+    
+    map = {...DEF, ...(d.states || d)};
+    notes = {...(d.notes || {})};
+    
+    // Cargar chat inicial
+    const rc = await fetch(cleanUrl + "/chat.json");
+    const dc = await rc.json();
+    messages = dc ? Object.values(dc).sort((a,b)=>a.ts-b.ts) : [];
 
-function unreadCount(){return messages.filter(m=>m.ts>lastReadTs&&m.user!==currentUser).length;}
+    status = "live"; 
+    render();
+    listen();
+    listenChat();
+  } catch(e) {
+    status = "error"; render();
+  }
+}
 
-function markRead(){lastReadTs=Date.now();localStorage.setItem("prisma-last-read",lastReadTs);}
-
+// --- COMUNICACIÓN FIREBASE ---
 function listen(){
-  if(es){es.close();}
-  es=new EventSource(dbUrl.replace(/\/$/,"")+"/hogar.json");
-  es.addEventListener("put",e=>{try{const m=JSON.parse(e.data);if(m.data&&typeof m.data==="object"){
-    map={...DEF,...(m.data.states||m.data)};
-    notes={...(m.data.notes||{})};
-    status="live";render();
-  }}catch(err){}});
-  es.addEventListener("patch",e=>{try{const m=JSON.parse(e.data);if(m.data){
-    if(m.data.states)map={...map,...m.data.states};
-    if(m.data.notes)notes={...notes,...m.data.notes};
-    status="live";render();
-  }}catch(err){}});
-  es.onerror=()=>{status="error";render();setTimeout(()=>{if(dbUrl)listen();},4000);};
+  if(es) es.close();
+  es = new EventSource(dbUrl.replace(/\/$/, "") + "/hogar.json");
+  es.addEventListener("put", e => {
+    const m = JSON.parse(e.data);
+    if(m.data) {
+      if(m.data.states) map = {...map, ...m.data.states};
+      else if(typeof m.data === 'object' && !m.path.includes('notes')) map = {...map, ...m.data};
+      if(m.data.notes) notes = {...notes, ...m.data.notes};
+      render();
+    }
+  });
 }
 
 function listenChat(){
-  if(chatEs)chatEs.close();
-  chatEs=new EventSource(dbUrl.replace(/\/$/,"")+"/chat.json");
-  chatEs.addEventListener("put",e=>{try{const m=JSON.parse(e.data);if(m.data&&typeof m.data==="object"){messages=Object.values(m.data).sort((a,b)=>a.ts-b.ts);render();scrollChat();}else if(!m.data){messages=[];}}catch(err){}});
-  chatEs.addEventListener("patch",e=>{try{const m=JSON.parse(e.data);if(m.data){const newMsgs=Object.values(m.data);messages=[...messages,...newMsgs].sort((a,b)=>a.ts-b.ts);render();scrollChat();}}catch(err){}});
+  if(chatEs) chatEs.close();
+  chatEs = new EventSource(dbUrl.replace(/\/$/, "") + "/chat.json");
+  chatEs.onmessage = e => {
+    const m = JSON.parse(e.data);
+    if(m.data) {
+      messages = Object.values(m.data).sort((a,b)=>a.ts-b.ts);
+      render();
+      if(chatOpen) scrollChat();
+    }
+  };
 }
 
-function scrollChat(){setTimeout(()=>{const el=document.getElementById("chat-msgs");if(el)el.scrollTop=el.scrollHeight;},50);}
-
-async function init(){
-  if(!dbUrl){status="config";render();return;}
-  try{
-    status="connecting";render();
-    const d=await fbGet();
-    map={...DEF,...(d.states||d)};
-    notes={...(d.notes||{})};
-    messages=await fbGetChat();
-    status="live";render();listen();listenChat();
-  }catch(e){status="error";render();}
+async function fbSetStates(d){
+  await fetch(dbUrl.replace(/\/$/,"")+"/hogar/states.json",{method:"PUT",body:JSON.stringify(d)});
 }
 
-function schedSave(m){clearTimeout(saveTimer);saveTimer=setTimeout(async()=>{status="saving";render();try{await fbSetStates(m);status="live";}catch(e){status="error";}render();},700);}
-function schedSaveNote(id,txt){clearTimeout(noteTimer);noteTimer=setTimeout(async()=>{try{await fbSetNote(id,txt);}catch(e){console.error(e);}},800);}
-
-async function sendMessage(txt){
-  if(!txt.trim()||!currentUser)return;
-  const msg={user:currentUser,text:txt.trim(),ts:Date.now()};
-  try{await fbPushMsg(msg);}catch(e){console.error(e);}
+async function fbSetNote(id,txt){
+  await fetch(dbUrl.replace(/\/$/,"")+`/hogar/notes/${id}.json`,{method:"PUT",body:JSON.stringify(txt)});
 }
 
-// ── Export PNG ──
-function exportPNG(){
-  exporting=true;render();
-  setTimeout(()=>{
-    try{
-      const sc=2,W=600,P=32,CW=(W-P*2-12)/2,CH=72,HH=90,SH=110,LH=28;
-      const ROWS=Math.ceil(SPACES.length/2),GH=ROWS*(CH+10),TH=HH+SH+LH+GH+48;
-      const today=new Date().getDay(),tIds=WEEKLY[today]||[];
-      const dStr=new Date().toLocaleDateString("es-CL",{weekday:"long",day:"numeric",month:"long"});
-      const avg=Object.values(map).reduce((a,b)=>a+b,0)/Object.values(map).length;
-      const pct=Math.round((avg/5)*100);
-      const sc2=avg>=4?"#6C63FF":avg>=3?"#22C55E":avg>=2?"#EAB308":avg>=1?"#F97316":"#EF4444";
-      const cv=document.createElement("canvas");cv.width=W*sc;cv.height=TH*sc;
-      const ctx=cv.getContext("2d");ctx.scale(sc,sc);
-      function rr(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();}
-      ctx.fillStyle="#f7f7f5";ctx.fillRect(0,0,W,TH);
-      ctx.fillStyle="#fff";rr(P-8,12,W-(P-8)*2,HH-16,16);ctx.fill();
-      ctx.fillStyle="#aaa";ctx.font="500 10px monospace";ctx.fillText("SISTEMA PRISMA · EJE HOGAR",P,42);
-      ctx.fillStyle="#1a1a2e";ctx.font="bold 26px Georgia,serif";ctx.fillText("Mapa del Hogar",P,70);
-      const pw=ctx.measureText(dStr).width+24;ctx.fillStyle="#1a1a2e";rr(W-P-pw,30,pw,24,12);ctx.fill();
-      ctx.fillStyle="#fff";ctx.font="500 10px monospace";ctx.fillText(dStr,W-P-pw+12,46);
-      const sY=HH+8;ctx.fillStyle="#fff";rr(P-8,sY,W-(P-8)*2,SH-12,16);ctx.fill();
-      ctx.fillStyle="#aaa";ctx.textAlign="center";ctx.font="500 10px monospace";ctx.fillText("ESTADO GENERAL",W/2,sY+24);
-      ctx.fillStyle=sc2;ctx.font="bold 44px Georgia,serif";ctx.fillText(pct+"%",W/2,sY+68);
-      const bW=180,bX=(W-bW)/2,bY=sY+78;
-      ctx.fillStyle="#ebebeb";rr(bX,bY,bW,6,3);ctx.fill();ctx.fillStyle=sc2;rr(bX,bY,bW*(pct/100),6,3);ctx.fill();ctx.textAlign="left";
-      const gY=HH+SH+LH+4;ctx.fillStyle="#bbb";ctx.font="500 10px monospace";ctx.fillText("TODOS LOS ESPACIOS",P,gY-10);
-      SPACES.forEach((sp,i)=>{
-        const col=i%2,row=Math.floor(i/2),x=P+col*(CW+12),y=gY+row*(CH+10);
-        const st=getSt(map[sp.id]),iT=tIds.includes(sp.id);
-        ctx.fillStyle="#fff";rr(x,y,CW,CH,12);ctx.fill();
-        ctx.strokeStyle=iT?st.color:"#e8e8e8";ctx.lineWidth=iT?2:1;rr(x,y,CW,CH,12);ctx.stroke();ctx.lineWidth=1;
-        if(iT){ctx.fillStyle=st.color;rr(x+CW-44,y-8,40,16,8);ctx.fill();ctx.fillStyle="#fff";ctx.font="bold 8px monospace";ctx.textAlign="center";ctx.fillText("HOY",x+CW-24,y+4);ctx.textAlign="left";}
-        ctx.font="17px serif";ctx.fillText(sp.icon,x+12,y+28);
-        ctx.fillStyle="#1a1a2e";ctx.font="600 12px sans-serif";ctx.fillText(sp.name,x+36,y+28);
-        ctx.font="16px serif";ctx.textAlign="right";ctx.fillText(st.symbol==="✦"?"✦":st.symbol,x+CW-12,y+28);ctx.textAlign="left";
-        const ppw=ctx.measureText(st.short).width+18;ctx.fillStyle=st.bg;rr(x+12,y+38,ppw,20,10);ctx.fill();
-        ctx.fillStyle=st.text;ctx.font="500 11px monospace";ctx.fillText(st.short,x+21,y+52);
-      });
-      ctx.fillStyle="#ccc";ctx.font="10px monospace";ctx.textAlign="center";ctx.fillText("Sistema Prisma · Eje Hogar",W/2,TH-12);
-      const a=document.createElement("a");a.download=`hogar-prisma-${new Date().toISOString().slice(0,10)}.png`;a.href=cv.toDataURL("image/png");a.click();
-    }catch(e){console.error(e);}
-    exporting=false;render();
-  },80);
+async function fbPushMsg(msg){
+  await fetch(dbUrl.replace(/\/$/,"")+"/chat.json",{method:"POST",body:JSON.stringify(msg)});
 }
 
-// ── Render ──
-const syncHtml={connecting:'<span class="sync">⟳ conectando...</span>',live:'<span class="sync live">● en vivo</span>',saving:'<span class="sync saving">↑ guardando...</span>',error:'<span class="sync error">⚠ sin conexión</span>'};
+// --- UTILIDADES ---
+function unreadCount() { return messages.filter(m=>m.ts>lastReadTs && m.user!==currentUser).length; }
+function markRead() { lastReadTs=Date.now(); localStorage.setItem("prisma-last-read",lastReadTs); }
+function scrollChat() { setTimeout(()=>{const el=document.getElementById("chat-msgs"); if(el) el.scrollTop=el.scrollHeight;},50); }
+function schedSave(m){ clearTimeout(saveTimer); saveTimer=setTimeout(()=>fbSetStates(m),700); }
+function schedSaveNote(id,txt){ clearTimeout(noteTimer); noteTimer=setTimeout(()=>fbSetNote(id,txt),800); }
 
+// --- RENDERIZADO ---
 function renderUserPicker(){
   const root=document.getElementById("root");
   root.innerHTML=`<div class="user-screen"><div class="user-card">
@@ -261,198 +226,129 @@ function renderUserPicker(){
     <div class="user-title">¿Quién eres?</div>
     <div class="user-sub">Elige tu perfil para continuar</div>
     <div class="user-options">
-      <div class="user-opt" id="u-Cris" style="border-color:#6C63FF">
-        <div class="user-opt-name">🧔 Cris</div>
-        <div class="user-opt-sub">entrar como Cris</div>
-      </div>
-      <div class="user-opt" id="u-Syl" style="border-color:#FF6B9D">
-        <div class="user-opt-name">👩 Syl</div>
-        <div class="user-opt-sub">entrar como Syl</div>
-      </div>
+      <div class="user-opt" id="u-Cris" style="border-color:#6C63FF"><div class="user-opt-name">🧔 Cris</div></div>
+      <div class="user-opt" id="u-Syl" style="border-color:#FF6B9D"><div class="user-opt-name">👩 Syl</div></div>
     </div>
   </div></div>`;
-  ["Cris","Syl"].forEach(u=>{
-    document.getElementById("u-"+u).addEventListener("click",()=>{
-      currentUser=u;localStorage.setItem("prisma-user",u);init();
-    });
-  });
-};
+  document.getElementById("u-Cris").onclick=()=>{currentUser="Cris"; localStorage.setItem("prisma-user","Cris"); init();};
+  document.getElementById("u-Syl").onclick=()=>{currentUser="Syl"; localStorage.setItem("prisma-user","Syl"); init();};
+}
 
-function render(){
+function render() {
   const root=document.getElementById("root");
-  if(!root)return;
-
-  if(!currentUser){renderUserPicker();return;}
-
-  if(status==="config"){
+  if(status==="config") {
     root.innerHTML=`<div class="config-screen"><div class="config-card">
-      <div style="font-size:32px;margin-bottom:12px">◈</div>
       <div class="config-title">Hogar Prisma</div>
-      <div class="config-sub">Pega la URL de tu Firebase Realtime Database.<br/>
-      Ejemplo:<br/><span style="color:#6C63FF">https://mi-proyecto-rtdb.firebaseio.com</span></div>
-      <label class="config-label">URL DE FIREBASE</label>
+      <div class="config-sub">Pega la URL de tu Firebase Realtime Database.</div>
       <input class="config-input" id="dbi" type="url" placeholder="https://..." value="${dbUrl}" />
-      <div class="config-err" id="cerr">URL inválida. Debe empezar con https://</div>
       <button class="btn-primary" id="bsc">Conectar →</button>
     </div></div>`;
     document.getElementById("bsc").onclick=()=>{
       const v=document.getElementById("dbi").value.trim();
-      if(!v.startsWith("https://")){document.getElementById("cerr").style.display="block";return;}
-      dbUrl=v;localStorage.setItem("prisma-db-url",dbUrl);if(es)es.close();init();
+      if(v.startsWith("http")){dbUrl=v; localStorage.setItem("prisma-db-url",v); init();}
     };
     return;
   }
 
-  const today=new Date().getDay(),tIds=WEEKLY[today]||[],dn=DAYS[today];
+  const today=new Date().getDay(), tIds=WEEKLY[today]||[], dn=DAYS[today];
   const avg=Object.values(map).reduce((a,b)=>a+b,0)/Object.values(map).length;
   const pct=Math.round((avg/5)*100);
   const sc=avg>=4?"#6C63FF":avg>=3?"#22C55E":avg>=2?"#EAB308":avg>=1?"#F97316":"#EF4444";
-  const crit=SPACES.filter(s=>map[s.id]===0);
+  const unread=unreadCount();
 
-  function cardH(id,isT){
-    const sp=SPACES.find(s=>s.id===id),st=getSt(map[id]),hasNote=!!(notes[id]&&notes[id].trim());
-    return`<div class="card" data-id="${id}" style="border-color:${isT?st.color:"#ebebeb"}${isT?`;box-shadow:0 0 0 3px ${st.color}33`:""}">
-      ${isT?`<div class="badge" style="background:${st.color}">hoy</div>`:""}
+  const cardH=(id,isT)=>{
+    const sp=SPACES.find(s=>s.id===id), st=getSt(map[id]), hasNote=!!(notes[id]&&notes[id].trim());
+    return `<div class="card" data-id="${id}" style="border-color:${isT?st.color:"#ebebeb"}">
+      ${isT?'<div class="badge" style="background:'+st.color+'">hoy</div>':''}
       <div class="card-top">
-        <div class="card-name"><span style="font-size:18px">${sp.icon}</span><span class="card-title">${sp.name}${hasNote?'<span class="card-note-dot"></span>':""}</span></div>
-        <span style="font-size:18px">${st.symbol}</span>
+        <div class="card-name"><span>${sp.icon}</span><span class="card-title">${sp.name}${hasNote?'<span class="card-note-dot"></span>':''}</span></div>
+        <span>${st.symbol}</span>
       </div>
       <div class="card-pill" style="background:${st.bg};color:${st.text}">${st.short}</div>
     </div>`;
-  }
-
-  const unread=unreadCount();
-  const userColor=USERS[currentUser]?.color||"#6C63FF";
-  const userAvatar=USERS[currentUser]?.avatar||"👤";
+  };
 
   root.innerHTML=`<div class="app">
     <div class="header">
       <div class="header-left"><div class="eyebrow">Sistema Prisma</div><h1>Eje Hogar</h1></div>
       <div class="header-right">
-        <div style="display:flex;align-items:center;gap:8px">
-          <span style="font-family:'DM Mono',monospace;font-size:10px;color:${userColor}">${userAvatar} ${currentUser}</span>
-          <div class="pill">${dn==="Domingo"?"🎲 Comodín":"📍 "+dn}</div>
-        </div>
-        ${syncHtml[status]||""}
+        <div style="font-size:10px;color:${USERS[currentUser]?.color}">${USERS[currentUser]?.avatar} ${currentUser}</div>
+        <div class="pill">${dn}</div>
       </div>
     </div>
+    
     <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:28px">
-      <div class="score-card" style="flex:1;max-width:300px">
+      <div class="score-card" style="flex:1">
         <span class="score-eyebrow">Estado general</span>
-        <div style="display:flex;align-items:baseline;gap:4px">
-          <span class="score-num" style="color:${sc}">${pct}</span>
-          <span class="score-pct">%</span>
-        </div>
+        <span class="score-num" style="color:${sc}">${pct}%</span>
         <div class="bar-bg"><div class="bar-fill" style="width:${pct}%;background:${sc}"></div></div>
       </div>
-      <button class="chat-btn" id="bchat">
-        💬
-        ${unread>0?`<span class="unread">${unread>9?"9+":unread}</span>`:""}
-      </button>
+      <button class="chat-btn" id="bchat">💬${unread?`<span class="unread">${unread}</span>`:''}</button>
     </div>
-    ${crit.length?`<div class="alert"><span style="font-size:22px">🟥</span><div>
-      <div class="alert-title">${crit.length===1?"1 espacio crítico":crit.length+" espacios críticos"}</div>
-      <div class="alert-sub">${crit.map(s=>s.name).join(", ")} → prioridad mañana</div>
-    </div></div>`:""}
-    ${tIds.length?`<div class="section-label">Zonas de hoy</div><div class="grid">${tIds.map(id=>cardH(id,true)).join("")}</div>`:""}
-    <div class="section-label">Todos los espacios</div>
-    <div class="grid">${SPACES.map(s=>cardH(s.id,tIds.includes(s.id))).join("")}</div>
-    <div class="legend">
-      <div class="section-label" style="margin-bottom:12px">Referencia de estados</div>
-      ${STATES.map(st=>`<div class="legend-row"><span class="legend-sym">${st.symbol}</span><span class="legend-txt">${st.label}</span></div>`).join("")}
-    </div>
-    <button class="btn-export" id="bex" ${exporting?"disabled":""}>
-      <span>${exporting?"⏳":"📥"}</span>${exporting?"generando png...":"exportar para OneNote"}
-    </button>
-    <button class="btn-sm" id="bcfg">⚙ cambiar base de datos · usuario: ${currentUser}</button>
-    <div class="hint">toca cualquier espacio para actualizar su estado</div>
-  </div>
-  ${chatOpen?`<div class="chat-overlay" id="chat-ov">
-    <div class="chat-sheet">
-      <div class="chat-head">
-        <div class="chat-head-row">
-          <div class="chat-title">💬 Chat del Hogar</div>
-          <div style="display:flex;align-items:center;gap:10px">
-            <span class="chat-user-badge" style="background:${userColor}">${userAvatar} ${currentUser}</span>
-            <button class="chat-close" id="bcc">✕</button>
-          </div>
-        </div>
-      </div>
-      <div class="chat-messages" id="chat-msgs">
-        ${messages.length===0?`<div style="text-align:center;padding:40px 0;font-family:'DM Mono',monospace;font-size:12px;color:#ccc">sin mensajes aún<br/>¡escribe el primero!</div>`:""}
-        ${messages.map(m=>{
-          const isMe=m.user===currentUser;
-          const u=USERS[m.user]||{color:"#888",avatar:"👤"};
-          const t=new Date(m.ts).toLocaleTimeString("es-CL",{hour:"2-digit",minute:"2-digit"});
-          return`<div class="msg ${isMe?"me":"them"}">
-            ${!isMe?`<div class="msg-author">${u.avatar} ${m.user}</div>`:""}
-            <div class="msg-bubble">${m.text.replace(/</g,"&lt;")}</div>
-            <div class="msg-time">${t}</div>
-          </div>`;
-        }).join("")}
-      </div>
-      <div class="chat-input-row">
-        <input class="chat-input" id="chat-in" type="text" placeholder="Escribe un mensaje..." maxlength="300" />
-        <button class="chat-send" id="chat-send">➤</button>
-      </div>
-    </div>
-  </div>`:""}
-  ${picking?`<div class="overlay" id="ov"><div class="sheet">
-    <div class="handle"></div>
-    ${viewingNotes?`
-    <div class="note-view">
-      <button class="note-back" id="bnb">← ${SPACES.find(s=>s.id===picking).icon} ${SPACES.find(s=>s.id===picking).name}</button>
-      <textarea class="note-textarea" id="note-ta" placeholder="Anotaciones, pendientes, recordatorios...">${(notes[picking]||"").replace(/</g,"&lt;")}</textarea>
-      <button class="note-save" id="bns">Guardar nota</button>
-      <div class="note-hint">se sincroniza en tiempo real</div>
-    </div>`:`
-    <div class="sheet-header">
-      <div>
-        <div class="sheet-title">${SPACES.find(s=>s.id===picking).icon} ${SPACES.find(s=>s.id===picking).name}</div>
-        <div class="sheet-sub">Selecciona el estado actual</div>
-      </div>
-      <button class="note-btn${notes[picking]&&notes[picking].trim()?" has-note":""}" id="bnote">🗒️</button>
-    </div>
-    ${STATES.map(st=>`<div class="opt" data-st="${st.id}" style="${map[picking]===st.id?`background:${st.bg};border-color:${st.color}`:""}">
-      <span class="opt-sym">${st.symbol}</span>
-      <span class="opt-label" style="color:${st.text};font-weight:${map[picking]===st.id?700:400}">${st.label}</span>
-      ${map[picking]===st.id?`<span style="color:${st.color};font-size:16px">✓</span>`:""}
-    </div>`).join("")}
-    <button class="btn-cancel" id="bcl">cancelar</button>`}
-  </div></div>`:""}`;
 
-  // events
-  document.querySelectorAll(".card").forEach(el=>el.addEventListener("click",()=>{picking=el.dataset.id;viewingNotes=false;render();}));
-  document.getElementById("bex")?.addEventListener("click",exportPNG);
-  document.getElementById("bcfg")?.addEventListener("click",()=>{currentUser="";localStorage.removeItem("prisma-user");render();});
-  document.getElementById("ov")?.addEventListener("click",e=>{if(e.target.id==="ov"){picking=null;viewingNotes=false;render();}});
-  document.getElementById("bcl")?.addEventListener("click",()=>{picking=null;viewingNotes=false;render();});
-  document.getElementById("bnote")?.addEventListener("click",()=>{viewingNotes=true;render();setTimeout(()=>document.getElementById("note-ta")?.focus(),50);});
-  document.getElementById("bnb")?.addEventListener("click",()=>{viewingNotes=false;render();});
-  document.getElementById("bns")?.addEventListener("click",()=>{
-    const txt=document.getElementById("note-ta")?.value||"";
-    notes={...notes,[picking]:txt};
-    schedSaveNote(picking,txt);
-    viewingNotes=false;render();
-  });
-  document.querySelectorAll(".opt").forEach(el=>el.addEventListener("click",()=>{
-    const ns=parseInt(el.dataset.st);map={...map,[picking]:ns};picking=null;viewingNotes=false;render();schedSave(map);
-  }));
-  // chat events
-  document.getElementById("bchat")?.addEventListener("click",()=>{chatOpen=true;markRead();render();scrollChat();});
-  document.getElementById("bcc")?.addEventListener("click",()=>{chatOpen=false;render();});
-  document.getElementById("chat-ov")?.addEventListener("click",e=>{if(e.target.id==="chat-ov"){chatOpen=false;render();}});
-  const chatIn=document.getElementById("chat-in");
-  const doSend=async()=>{
-    const txt=chatIn?.value||"";if(!txt.trim())return;
-    chatIn.value="";
-    await sendMessage(txt);
-  };
-  document.getElementById("chat-send")?.addEventListener("click",doSend);
-  chatIn?.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();doSend();}});
-  if(chatOpen)scrollChat();
+    <div class="section-label">Espacios</div>
+    <div class="grid">${SPACES.map(s=>cardH(s.id,tIds.includes(s.id))).join("")}</div>
+
+    <button class="btn-sm" id="reset-btn">⚙ Cambiar Usuario / Base de datos</button>
+  </div>
+
+  ${picking ? `<div class="overlay" id="ov"><div class="sheet">
+    <div class="handle"></div>
+    ${viewingNotes ? `
+      <div class="note-view">
+        <button class="note-back" id="bnb">← Volver</button>
+        <textarea class="note-textarea" id="note-ta">${notes[picking]||''}</textarea>
+        <button class="note-save" id="bns">Guardar</button>
+      </div>
+    ` : `
+      <div class="sheet-header">
+        <div class="sheet-title">${SPACES.find(s=>s.id===picking).name}</div>
+        <button class="note-btn ${notes[picking]?'has-note':''}" id="bnote">🗒️</button>
+      </div>
+      ${STATES.map(st=>`<div class="opt" data-st="${st.id}" style="${map[picking]===st.id?`background:${st.bg};border-color:${st.color}`:''}"><span class="opt-label">${st.symbol} ${st.label}</span></div>`).join("")}
+    `}
+  </div></div>` : ''}
+
+  ${chatOpen ? `<div class="chat-overlay" id="chat-ov"><div class="chat-sheet">
+    <div class="chat-head"><div class="chat-head-row"><div class="chat-title">Chat</div><button class="chat-close" id="bcc">✕</button></div></div>
+    <div class="chat-messages" id="chat-msgs">
+      ${messages.map(m=>`<div class="msg ${m.user===currentUser?'me':'them'}"><div class="msg-bubble">${m.text}</div></div>`).join("")}
+    </div>
+    <div class="chat-input-row">
+      <input class="chat-input" id="chat-in" placeholder="Escribe..." />
+      <button class="chat-send" id="chat-send">➤</button>
+    </div>
+  </div></div>` : ''}`;
+
+  // Eventos
+  document.querySelectorAll(".card").forEach(c=>c.onclick=()=>{picking=c.dataset.id; render();});
+  document.getElementById("reset-btn").onclick=()=>{localStorage.clear(); location.reload();};
+  if(picking){
+    document.getElementById("ov").onclick=e=>{if(e.target.id==="ov"){picking=null;render();}};
+    document.getElementById("bnote")&&(document.getElementById("bnote").onclick=()=>{viewingNotes=true;render();});
+    document.getElementById("bnb")&&(document.getElementById("bnb").onclick=()=>{viewingNotes=false;render();});
+    document.getElementById("bns")&&(document.getElementById("bns").onclick=()=>{
+      const v=document.getElementById("note-ta").value;
+      notes[picking]=v; schedSaveNote(picking,v); viewingNotes=false; render();
+    });
+    document.querySelectorAll(".opt").forEach(o=>o.onclick=()=>{
+      const st=parseInt(o.dataset.st); map[picking]=st; schedSave(map); picking=null; render();
+    });
+  }
+  if(document.getElementById("bchat")){
+    document.getElementById("bchat").onclick=()=>{chatOpen=true; markRead(); render(); scrollChat();};
+  }
+  if(chatOpen){
+    document.getElementById("bcc").onclick=()=>{chatOpen=false; render();};
+    document.getElementById("chat-send").onclick=async()=>{
+      const i=document.getElementById("chat-in");
+      if(i.value.trim()){ await fbPushMsg({user:currentUser, text:i.value.trim(), ts:Date.now()}); i.value=""; }
+    };
+  }
 }
 
-if(currentUser&&dbUrl){init();}else{render();}
+// Iniciar
+window.onload = init;
+</script>
 </body>
 </html>
