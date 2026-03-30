@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -91,6 +92,40 @@
     .note-save:active { opacity: 0.85; }
     .note-hint { font-family: 'DM Mono', monospace; font-size: 10px; color: #ccc; text-align: center; margin-top: 10px; }
     .card-note-dot { display: inline-block; width: 6px; height: 6px; background: var(--accent); border-radius: 99px; margin-left: 5px; vertical-align: middle; }
+    /* Chat */
+    .chat-btn { position: relative; background: none; border: none; cursor: pointer; font-size: 22px; padding: 4px; line-height: 1; -webkit-tap-highlight-color: transparent; }
+    .chat-btn .unread { position: absolute; top: 0; right: 0; min-width: 16px; height: 16px; background: #EF4444; border-radius: 99px; border: 2px solid #fff; font-family: 'DM Mono', monospace; font-size: 9px; color: #fff; display: flex; align-items: center; justify-content: center; padding: 0 3px; }
+    .chat-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: flex; align-items: flex-end; justify-content: center; z-index: 250; }
+    .chat-sheet { background: var(--white); border-radius: 24px 24px 0 0; width: 100%; max-width: 560px; height: 85vh; display: flex; flex-direction: column; animation: up 0.22s ease; }
+    .chat-head { padding: 20px 24px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    .chat-head-row { display: flex; align-items: center; justify-content: space-between; }
+    .chat-title { font-family: 'DM Serif Display', serif; font-size: 20px; color: var(--dark); }
+    .chat-user-badge { font-family: 'DM Mono', monospace; font-size: 10px; padding: 4px 12px; border-radius: 99px; color: #fff; }
+    .chat-close { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--light); padding: 4px; -webkit-tap-highlight-color: transparent; }
+    .chat-messages { flex: 1; overflow-y: auto; padding: 16px 20px; display: flex; flex-direction: column; gap: 10px; }
+    .msg { display: flex; flex-direction: column; max-width: 78%; }
+    .msg.me { align-self: flex-end; align-items: flex-end; }
+    .msg.them { align-self: flex-start; align-items: flex-start; }
+    .msg-author { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--light); margin-bottom: 3px; }
+    .msg-bubble { padding: 10px 14px; border-radius: 16px; font-size: 14px; line-height: 1.5; word-break: break-word; }
+    .msg.me .msg-bubble { background: var(--me-color, #6C63FF); color: #fff; border-bottom-right-radius: 4px; }
+    .msg.them .msg-bubble { background: #f0f0f0; color: var(--dark); border-bottom-left-radius: 4px; }
+    .msg-time { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--light); margin-top: 3px; }
+    .chat-input-row { display: flex; gap: 10px; padding: 14px 20px 30px; border-top: 1px solid var(--border); flex-shrink: 0; }
+    .chat-input { flex: 1; padding: 12px 16px; border: 2px solid var(--border); border-radius: 22px; font-family: 'DM Sans', sans-serif; font-size: 15px; color: var(--dark); background: #fafafa; outline: none; transition: border-color 0.15s; }
+    .chat-input:focus { border-color: var(--accent); background: #fff; }
+    .chat-send { width: 44px; height: 44px; background: var(--accent); border: none; border-radius: 99px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; -webkit-tap-highlight-color: transparent; transition: opacity 0.15s; }
+    .chat-send:active { opacity: 0.8; }
+    /* User picker */
+    .user-screen { position: fixed; inset: 0; background: var(--bg); z-index: 400; display: flex; align-items: center; justify-content: center; padding: 24px; }
+    .user-card { background: var(--white); border-radius: 20px; padding: 36px 28px; width: 100%; max-width: 340px; box-shadow: 0 8px 40px rgba(0,0,0,0.1); text-align: center; }
+    .user-title { font-family: 'DM Serif Display', serif; font-size: 26px; color: var(--dark); margin-bottom: 8px; }
+    .user-sub { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--light); margin-bottom: 32px; }
+    .user-options { display: flex; flex-direction: column; gap: 12px; }
+    .user-opt { padding: 16px; border-radius: 14px; border: 2px solid var(--border); cursor: pointer; transition: all 0.15s; -webkit-tap-highlight-color: transparent; }
+    .user-opt:active { transform: scale(0.97); }
+    .user-opt-name { font-family: 'DM Serif Display', serif; font-size: 22px; color: var(--dark); }
+    .user-opt-sub { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--light); margin-top: 2px; }
   </style>
 </head>
 <body>
@@ -103,15 +138,27 @@ const DAYS=["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"
 const DEF=Object.fromEntries(SPACES.map(s=>[s.id,2]));
 const getSt=id=>STATES.find(s=>s.id===id)||STATES[3];
 
-let map={...DEF},notes={},picking=null,viewingNotes=false,status="config",dbUrl=localStorage.getItem("prisma-db-url")||"",es=null,saveTimer=null,noteTimer=null,exporting=false;
+let map={...DEF},notes={},messages=[],picking=null,viewingNotes=false,chatOpen=false,status="config",dbUrl=localStorage.getItem("prisma-db-url")||"",currentUser=localStorage.getItem("prisma-user")||"",es=null,chatEs=null,saveTimer=null,noteTimer=null,exporting=false,lastReadTs=parseInt(localStorage.getItem("prisma-last-read")||"0");
+
+const USERS={
+  Cris:{color:"#7B9DB4",avatar:"🧔"},
+  Syl:{color:"#6C63FF",avatar:"👩"}
+};
 
 // ── Firebase ──
 const fbStatesUrl=()=>dbUrl.replace(/\/$/,"")+"/hogar/states.json";
 const fbNotesUrl=()=>dbUrl.replace(/\/$/,"")+"/hogar/notes.json";
 const fbRootUrl=()=>dbUrl.replace(/\/$/,"")+"/hogar.json";
+const fbChatUrl=()=>dbUrl.replace(/\/$/,"")+"/chat.json";
 async function fbGet(){const r=await fetch(fbRootUrl());if(!r.ok)throw new Error();const d=await r.json()||{};return d;}
 async function fbSetStates(d){const r=await fetch(fbStatesUrl(),{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(d)});if(!r.ok)throw new Error();}
 async function fbSetNote(id,txt){const r=await fetch(dbUrl.replace(/\/$/,"")+`/hogar/notes/${id}.json`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(txt)});if(!r.ok)throw new Error();}
+async function fbPushMsg(msg){const r=await fetch(fbChatUrl(),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(msg)});if(!r.ok)throw new Error();}
+async function fbGetChat(){const r=await fetch(fbChatUrl());if(!r.ok)return[];const d=await r.json();if(!d)return[];return Object.values(d).sort((a,b)=>a.ts-b.ts);}
+
+function unreadCount(){return messages.filter(m=>m.ts>lastReadTs&&m.user!==currentUser).length;}
+
+function markRead(){lastReadTs=Date.now();localStorage.setItem("prisma-last-read",lastReadTs);}
 
 function listen(){
   if(es){es.close();}
@@ -129,6 +176,15 @@ function listen(){
   es.onerror=()=>{status="error";render();setTimeout(()=>{if(dbUrl)listen();},4000);};
 }
 
+function listenChat(){
+  if(chatEs)chatEs.close();
+  chatEs=new EventSource(dbUrl.replace(/\/$/,"")+"/chat.json");
+  chatEs.addEventListener("put",e=>{try{const m=JSON.parse(e.data);if(m.data&&typeof m.data==="object"){messages=Object.values(m.data).sort((a,b)=>a.ts-b.ts);render();scrollChat();}else if(!m.data){messages=[];}}catch(err){}});
+  chatEs.addEventListener("patch",e=>{try{const m=JSON.parse(e.data);if(m.data){const newMsgs=Object.values(m.data);messages=[...messages,...newMsgs].sort((a,b)=>a.ts-b.ts);render();scrollChat();}}catch(err){}});
+}
+
+function scrollChat(){setTimeout(()=>{const el=document.getElementById("chat-msgs");if(el)el.scrollTop=el.scrollHeight;},50);}
+
 async function init(){
   if(!dbUrl){status="config";render();return;}
   try{
@@ -136,12 +192,19 @@ async function init(){
     const d=await fbGet();
     map={...DEF,...(d.states||d)};
     notes={...(d.notes||{})};
-    status="live";render();listen();
+    messages=await fbGetChat();
+    status="live";render();listen();listenChat();
   }catch(e){status="error";render();}
 }
 
 function schedSave(m){clearTimeout(saveTimer);saveTimer=setTimeout(async()=>{status="saving";render();try{await fbSetStates(m);status="live";}catch(e){status="error";}render();},700);}
 function schedSaveNote(id,txt){clearTimeout(noteTimer);noteTimer=setTimeout(async()=>{try{await fbSetNote(id,txt);}catch(e){console.error(e);}},800);}
+
+async function sendMessage(txt){
+  if(!txt.trim()||!currentUser)return;
+  const msg={user:currentUser,text:txt.trim(),ts:Date.now()};
+  try{await fbPushMsg(msg);}catch(e){console.error(e);}
+}
 
 // ── Export PNG ──
 function exportPNG(){
@@ -192,9 +255,35 @@ function exportPNG(){
 // ── Render ──
 const syncHtml={connecting:'<span class="sync">⟳ conectando...</span>',live:'<span class="sync live">● en vivo</span>',saving:'<span class="sync saving">↑ guardando...</span>',error:'<span class="sync error">⚠ sin conexión</span>'};
 
+function renderUserPicker(){
+  const root=document.getElementById("root");
+  root.innerHTML=`<div class="user-screen"><div class="user-card">
+    <div style="font-size:36px;margin-bottom:12px">🏠</div>
+    <div class="user-title">¿Quién eres?</div>
+    <div class="user-sub">Elige tu perfil para continuar</div>
+    <div class="user-options">
+      <div class="user-opt" id="u-Cris" style="border-color:#7B9DB4">
+        <div class="user-opt-name">🧔 Cris</div>
+        <div class="user-opt-sub">entrar como Cris</div>
+      </div>
+      <div class="user-opt" id="u-Syl" style="border-color:#6C63FF">
+        <div class="user-opt-name">👩 Syl</div>
+        <div class="user-opt-sub">entrar como Syl</div>
+      </div>
+    </div>
+  </div></div>`;
+  ["Cris","Syl"].forEach(u=>{
+    document.getElementById("u-"+u).addEventListener("click",()=>{
+      currentUser=u;localStorage.setItem("prisma-user",u);init();
+    });
+  });
+};
+
 function render(){
   const root=document.getElementById("root");
   if(!root)return;
+
+  if(!currentUser){renderUserPicker();return;}
 
   if(status==="config"){
     root.innerHTML=`<div class="config-screen"><div class="config-card">
@@ -233,22 +322,35 @@ function render(){
     </div>`;
   }
 
+  const unread=unreadCount();
+  const userColor=USERS[currentUser]?.color||"#6C63FF";
+  const userAvatar=USERS[currentUser]?.avatar||"👤";
+
   root.innerHTML=`<div class="app">
     <div class="header">
       <div class="header-left"><div class="eyebrow">Sistema Prisma</div><h1>Eje Hogar</h1></div>
       <div class="header-right">
-        <div class="pill">${dn==="Domingo"?"🎲 Comodín":"📍 "+dn}</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-family:'DM Mono',monospace;font-size:10px;color:${userColor}">${userAvatar} ${currentUser}</span>
+          <div class="pill">${dn==="Domingo"?"🎲 Comodín":"📍 "+dn}</div>
+        </div>
         ${syncHtml[status]||""}
       </div>
     </div>
-    <div class="score-wrap"><div class="score-card">
-      <span class="score-eyebrow">Estado general</span>
-      <div style="display:flex;align-items:baseline;gap:4px">
-        <span class="score-num" style="color:${sc}">${pct}</span>
-        <span class="score-pct">%</span>
+    <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:28px">
+      <div class="score-card" style="flex:1;max-width:300px">
+        <span class="score-eyebrow">Estado general</span>
+        <div style="display:flex;align-items:baseline;gap:4px">
+          <span class="score-num" style="color:${sc}">${pct}</span>
+          <span class="score-pct">%</span>
+        </div>
+        <div class="bar-bg"><div class="bar-fill" style="width:${pct}%;background:${sc}"></div></div>
       </div>
-      <div class="bar-bg"><div class="bar-fill" style="width:${pct}%;background:${sc}"></div></div>
-    </div></div>
+      <button class="chat-btn" id="bchat">
+        💬
+        ${unread>0?`<span class="unread">${unread>9?"9+":unread}</span>`:""}
+      </button>
+    </div>
     ${crit.length?`<div class="alert"><span style="font-size:22px">🟥</span><div>
       <div class="alert-title">${crit.length===1?"1 espacio crítico":crit.length+" espacios críticos"}</div>
       <div class="alert-sub">${crit.map(s=>s.name).join(", ")} → prioridad mañana</div>
@@ -261,17 +363,47 @@ function render(){
       ${STATES.map(st=>`<div class="legend-row"><span class="legend-sym">${st.symbol}</span><span class="legend-txt">${st.label}</span></div>`).join("")}
     </div>
     <button class="btn-export" id="bex" ${exporting?"disabled":""}>
-      <span>${exporting?"⏳":"📥"}</span>${exporting?"generando png...":"exportar para OneNote"}
+      <span>${exporting?"⏳":"📸"}</span>${exporting?"generando imagen...":"sacar pantallazo"}
     </button>
-    <button class="btn-sm" id="bcfg">⚙ cambiar base de datos</button>
+    <button class="btn-sm" id="bcfg">⚙ cambiar base de datos · usuario: ${currentUser}</button>
     <div class="hint">toca cualquier espacio para actualizar su estado</div>
   </div>
+  ${chatOpen?`<div class="chat-overlay" id="chat-ov">
+    <div class="chat-sheet" style="--me-color:${userColor}">
+      <div class="chat-head">
+        <div class="chat-head-row">
+          <div class="chat-title">💬 Chat del Hogar</div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <span class="chat-user-badge" style="background:${userColor}">${userAvatar} ${currentUser}</span>
+            <button class="chat-close" id="bcc">✕</button>
+          </div>
+        </div>
+      </div>
+      <div class="chat-messages" id="chat-msgs">
+        ${messages.length===0?`<div style="text-align:center;padding:40px 0;font-family:'DM Mono',monospace;font-size:12px;color:#ccc">sin mensajes aún<br/>¡escribe el primero!</div>`:""}
+        ${messages.map(m=>{
+          const isMe=m.user===currentUser;
+          const u=USERS[m.user]||{color:"#888",avatar:"👤"};
+          const t=new Date(m.ts).toLocaleTimeString("es-CL",{hour:"2-digit",minute:"2-digit"});
+          return`<div class="msg ${isMe?"me":"them"}">
+            ${!isMe?`<div class="msg-author">${u.avatar} ${m.user}</div>`:""}
+            <div class="msg-bubble">${m.text.replace(/</g,"&lt;")}</div>
+            <div class="msg-time">${t}</div>
+          </div>`;
+        }).join("")}
+      </div>
+      <div class="chat-input-row">
+        <input class="chat-input" id="chat-in" type="text" placeholder="Escribe un mensaje..." maxlength="300" />
+        <button class="chat-send" id="chat-send">➤</button>
+      </div>
+    </div>
+  </div>`:""}
   ${picking?`<div class="overlay" id="ov"><div class="sheet">
     <div class="handle"></div>
     ${viewingNotes?`
     <div class="note-view">
       <button class="note-back" id="bnb">← ${SPACES.find(s=>s.id===picking).icon} ${SPACES.find(s=>s.id===picking).name}</button>
-      <textarea class="note-textarea" id="note-ta" placeholder="Anotaciones, pendientes, recordatorios...">${(notes[picking]||"").replace(/"/g,"&quot;")}</textarea>
+      <textarea class="note-textarea" id="note-ta" placeholder="Anotaciones, pendientes, recordatorios...">${(notes[picking]||"").replace(/</g,"&lt;")}</textarea>
       <button class="note-save" id="bns">Guardar nota</button>
       <div class="note-hint">se sincroniza en tiempo real</div>
     </div>`:`
@@ -293,7 +425,7 @@ function render(){
   // events
   document.querySelectorAll(".card").forEach(el=>el.addEventListener("click",()=>{picking=el.dataset.id;viewingNotes=false;render();}));
   document.getElementById("bex")?.addEventListener("click",exportPNG);
-  document.getElementById("bcfg")?.addEventListener("click",()=>{status="config";render();});
+  document.getElementById("bcfg")?.addEventListener("click",()=>{currentUser="";localStorage.removeItem("prisma-user");render();});
   document.getElementById("ov")?.addEventListener("click",e=>{if(e.target.id==="ov"){picking=null;viewingNotes=false;render();}});
   document.getElementById("bcl")?.addEventListener("click",()=>{picking=null;viewingNotes=false;render();});
   document.getElementById("bnote")?.addEventListener("click",()=>{viewingNotes=true;render();setTimeout(()=>document.getElementById("note-ta")?.focus(),50);});
@@ -307,9 +439,21 @@ function render(){
   document.querySelectorAll(".opt").forEach(el=>el.addEventListener("click",()=>{
     const ns=parseInt(el.dataset.st);map={...map,[picking]:ns};picking=null;viewingNotes=false;render();schedSave(map);
   }));
+  // chat events
+  document.getElementById("bchat")?.addEventListener("click",()=>{chatOpen=true;markRead();render();scrollChat();});
+  document.getElementById("bcc")?.addEventListener("click",()=>{chatOpen=false;render();});
+  document.getElementById("chat-ov")?.addEventListener("click",e=>{if(e.target.id==="chat-ov"){chatOpen=false;render();}});
+  const chatIn=document.getElementById("chat-in");
+  const doSend=async()=>{
+    const txt=chatIn?.value||"";if(!txt.trim())return;
+    chatIn.value="";
+    await sendMessage(txt);
+  };
+  document.getElementById("chat-send")?.addEventListener("click",doSend);
+  chatIn?.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();doSend();}});
+  if(chatOpen)scrollChat();
 }
 
-init();
-</script>
+if(currentUser&&dbUrl){init();}else{render();}
 </body>
 </html>
