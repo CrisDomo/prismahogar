@@ -1,25 +1,33 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
-<title>Hogar · Prisma</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Hogar · Prisma</title>
 
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <meta name="theme-color" content="#1a1a2e" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Hogar Prisma" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
 
 <style>
-/* ✅ CSS ORIGINAL – SIN CAMBIOS */
+/* --- [ CSS intacto, no modificado ] --- */
+/* (idéntico a tu versión original) */
 </style>
 </head>
 
 <body>
-<div id="root"><div class="loading">cargando...</div></div>
+<div id="root">
+  <div class="loading">cargando...</div>
+</div>
 
 <script>
-/* =====================================================
-   BASE
-===================================================== */
+/* ===============================
+   Datos base
+================================ */
 
 var SPACES = [
   {id:"jardin",name:"Jardín delantero",icon:"🌿"},
@@ -45,21 +53,40 @@ var STATES = [
   {id:0,symbol:"🟥",label:"Insulto a la dignidad",short:"Crítico",color:"#EF4444",bg:"#fef2f2",text:"#991b1b"}
 ];
 
-var USERS = {
-  Cris:{color:"#6C63FF",avatar:"🧔"},
-  Syl:{color:"#FF6B9D",avatar:"👩"}
+var WEEKLY = {
+  0:[],
+  1:["living","cocina"],
+  2:["bano","pasillo"],
+  3:["pieza","oficina"],
+  4:["pieza_atras","patio"],
+  5:["pasillo_patio","bodegas"],
+  6:["jardin","auto"]
 };
 
-var map = {}, notes = {}, messages = [];
+var DAYS = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
+
+var USERS = {
+  Cris:{ color:"#6C63FF", avatar:"🧔" },
+  Syl:{ color:"#FF6B9D", avatar:"👩" }
+};
+
+/* ===============================
+   Estado global
+================================ */
+
+var map = {};
+var notes = {};
+var messages = [];
+var picking = null;
+var viewingNotes = false;
+var chatOpen = false;
+var status = "config";
+
 SPACES.forEach(s => map[s.id] = 2);
 
-var currentUser = localStorage.getItem("prisma-user") || "";
-var dbUrl = localStorage.getItem("prisma-db-url") || "";
-var chatEs = null;
-
-/* =====================================================
-   UTILS
-===================================================== */
+/* ===============================
+   Utils seguros
+================================ */
 
 function esc(s){
   return String(s || "")
@@ -68,169 +95,125 @@ function esc(s){
     .replace(/>/g,"&gt;");
 }
 
+function getSt(id){
+  return STATES.find(s => s.id === id) || STATES[3];
+}
+
+/* ===============================
+   Firebase helpers
+================================ */
+
+var dbUrl = localStorage.getItem("prisma-db-url") || "";
+var currentUser = localStorage.getItem("prisma-user") || "";
+
 function cleanUrl(){
   return dbUrl.replace(/\/$/,"");
 }
 
-function scrollChat(){
-  setTimeout(()=>{
-    var el=document.getElementById("chat-msgs");
-    if(el) el.scrollTop=el.scrollHeight;
-  },50);
-}
-
-/* =====================================================
-   FIREBASE
-===================================================== */
-
 function fbPushMsg(msg){
   return fetch(cleanUrl()+"/chat.json",{
     method:"POST",
-    headers:{"Content-Type":"application/json"},
+    headers:{ "Content-Type":"application/json" },
     body:JSON.stringify(msg)
   });
 }
 
-/* =====================================================
-   CHAT LISTENER (✅ FIX FINAL)
-===================================================== */
-
-function listenChat(){
-  if(chatEs) chatEs.close();
-
-  chatEs = new EventSource(cleanUrl()+"/chat.json");
-
-  function mergeIncoming(data){
-    if(!data){ messages=[]; return; }
-
-    var incoming = Object.values(data);
-    var seen = {};
-
-    messages.forEach(m=>{
-      seen[m.ts + "_" + m.user] = true;
-    });
-
-    incoming.forEach(m=>{
-      var k = m.ts + "_" + m.user;
-      if(!seen[k]) messages.push(m);
-    });
-
-    messages.sort((a,b)=>a.ts-b.ts);
-  }
-
-  chatEs.addEventListener("put", e=>{
-    try{
-      var m = JSON.parse(e.data);
-      mergeIncoming(m.data);
-      render();
-      scrollChat();
-    }catch(err){console.error(err);}
-  });
-
-  chatEs.addEventListener("patch", e=>{
-    try{
-      var m = JSON.parse(e.data);
-      mergeIncoming(m.data);
-      render();
-      scrollChat();
-    }catch(err){console.error(err);}
-  });
-}
-
-/* =====================================================
-   SEND MESSAGE
-===================================================== */
+/* ===============================
+   Chat
+================================ */
 
 function sendMessage(txt){
   if(!txt || !txt.trim() || !currentUser) return;
 
-  var msg={
-    user:currentUser,
-    text:txt.trim(),
-    ts:Date.now()
+  var msg = {
+    user: currentUser,
+    text: txt.trim(),
+    ts: Date.now()
   };
 
-  messages.push(msg);          // ✅ instantáneo
+  messages.push(msg);
   render();
   scrollChat();
 
   fbPushMsg(msg).catch(console.error);
 }
 
-/* =====================================================
-   RENDER (CHAT)
-===================================================== */
+function scrollChat(){
+  setTimeout(()=>{
+    var el = document.getElementById("chat-msgs");
+    if(el) el.scrollTop = el.scrollHeight;
+  },50);
+}
+
+/* ===============================
+   Render
+================================ */
 
 function render(){
-  var root=document.getElementById("root");
+  var root = document.getElementById("root");
   if(!root) return;
 
   if(!currentUser){
-    root.innerHTML=`
-      <div style="padding:40px">
-        <button onclick="selectUser('Cris')">🧔 Cris</button>
-        <button onclick="selectUser('Syl')">👩 Syl</button>
-      </div>`;
+    root.innerHTML = "<h2 style='padding:40px'>Selecciona usuario</h2>";
     return;
   }
 
-  var u=USERS[currentUser] || {};
-  var color=u.color || "#6C63FF";
+  var user = USERS[currentUser] || {};
+  var userColor = user.color || "#6C63FF";
+  var userAvatar = user.avatar || "👤";
 
-  root.innerHTML=`
+  var h = `
     <div class="app">
-      <h2>💬 Chat del Hogar</h2>
+      <h1>💬 Chat del Hogar</h1>
 
       <div class="chat-messages" id="chat-msgs">
         ${
-          messages.length===0
-          ? `<div style="color:#bbb">Sin mensajes aún</div>`
+          messages.length === 0
+          ? "<div style='color:#ccc'>Sin mensajes aún</div>"
           : messages.map(m=>{
-              var me=m.user===currentUser;
+              var isMe = m.user === currentUser;
               return `
-                <div class="msg ${me?'me':'them'}">
-                  ${!me?`<div class="msg-author">${esc(m.user)}</div>`:""}
+                <div class="msg ${isMe?"me":"them"}">
+                  ${!isMe?`<div class="msg-author">${esc(m.user)}</div>`:""}
                   <div class="msg-bubble">${esc(m.text)}</div>
-                </div>`;
+                </div>
+              `;
             }).join("")
         }
       </div>
 
       <div class="chat-input-row">
-        <input id="chat-in" placeholder="Escribe un mensaje...">
-        <button id="chat-send">➤</button>
+        <input id="chat-in" class="chat-input" placeholder="Escribe..." />
+        <button id="chat-send" class="chat-send">➤</button>
       </div>
-    </div>`;
+    </div>
+  `;
 
-  document.getElementById("chat-send").onclick=()=>{
-    var i=document.getElementById("chat-in");
-    var t=i.value;
-    i.value="";
-    sendMessage(t);
+  root.innerHTML = h;
+
+  document.getElementById("chat-send").onclick = ()=>{
+    var inp = document.getElementById("chat-in");
+    var txt = inp.value;
+    inp.value="";
+    sendMessage(txt);
   };
 
-  document.getElementById("chat-in").onkeydown=e=>{
+  document.getElementById("chat-in").onkeydown = e=>{
     if(e.key==="Enter"){
       e.preventDefault();
-      var t=e.target.value;
-      e.target.value="";
-      sendMessage(t);
+      var inp=e.target;
+      var txt=inp.value;
+      inp.value="";
+      sendMessage(txt);
     }
   };
 
   scrollChat();
 }
 
-/* =====================================================
-   USER
-===================================================== */
-
-function selectUser(u){
-  currentUser=u;
-  localStorage.setItem("prisma-user",u);
-  listenChat();
-  render();
-}
+/* ===============================
+   Init
+================================ */
 
 render();
 </script>
