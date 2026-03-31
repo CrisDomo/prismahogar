@@ -108,7 +108,7 @@
     .msg.them { align-self: flex-start; align-items: flex-start; }
     .msg-author { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--light); margin-bottom: 3px; }
     .msg-bubble { padding: 10px 14px; border-radius: 16px; font-size: 14px; line-height: 1.5; word-break: break-word; }
-    .msg.me .msg-bubble { background: var(--accent); color: #fff; border-bottom-right-radius: 4px; }
+    .msg.me .msg-bubble { background: var(--me-color, #6C63FF); color: #fff; border-bottom-right-radius: 4px; }
     .msg.them .msg-bubble { background: #f0f0f0; color: var(--dark); border-bottom-left-radius: 4px; }
     .msg-time { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--light); margin-top: 3px; }
     .chat-input-row { display: flex; gap: 10px; padding: 14px 20px 30px; border-top: 1px solid var(--border); flex-shrink: 0; }
@@ -138,11 +138,15 @@ const DAYS=["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"
 const DEF=Object.fromEntries(SPACES.map(s=>[s.id,2]));
 const getSt=id=>STATES.find(s=>s.id===id)||STATES[3];
 
-let map={...DEF},notes={},messages=[],picking=null,viewingNotes=false,chatOpen=false,status="config",dbUrl=localStorage.getItem("prisma-db-url")||"",currentUser=localStorage.getItem("prisma-user")||"",es=null,chatEs=null,saveTimer=null,noteTimer=null,exporting=false,lastReadTs=parseInt(localStorage.getItem("prisma-last-read")||"0");
+function safeGet(k){try{return localStorage.getItem(k)||"";}catch(e){return "";}}
+function safeSet(k,v){try{localStorage.setItem(k,v);}catch(e){}}
+function safeGetInt(k,d){try{return parseInt(localStorage.getItem(k)||d)||0;}catch(e){return 0;}}
+
+let map={...DEF},notes={},messages=[],picking=null,viewingNotes=false,chatOpen=false,status="config",dbUrl=safeGet("prisma-db-url"),currentUser=safeGet("prisma-user"),es=null,chatEs=null,saveTimer=null,noteTimer=null,exporting=false,lastReadTs=safeGetInt("prisma-last-read","0");
 
 const USERS={
-  Cris:{color:"#6C63FF",avatar:"🧔"},
-  Syl:{color:"#FF6B9D",avatar:"👩"}
+  Cris:{color:"#7B9DB4",avatar:"🧔"},
+  Syl:{color:"#6C63FF",avatar:"👩"}
 };
 
 // ── Firebase ──
@@ -158,18 +162,26 @@ async function fbGetChat(){const r=await fetch(fbChatUrl());if(!r.ok)return[];co
 
 function unreadCount(){return messages.filter(m=>m.ts>lastReadTs&&m.user!==currentUser).length;}
 
-function markRead(){lastReadTs=Date.now();localStorage.setItem("prisma-last-read",lastReadTs);}
+function markRead(){lastReadTs=Date.now();safeSet("prisma-last-read",lastReadTs);}
+
+function sanitizeMap(raw){
+  const result={...DEF};
+  if(raw&&typeof raw==="object"){
+    SPACES.forEach(s=>{if(s.id in raw)result[s.id]=parseInt(raw[s.id])||0;});
+  }
+  return result;
+}
 
 function listen(){
   if(es){es.close();}
   es=new EventSource(dbUrl.replace(/\/$/,"")+"/hogar.json");
   es.addEventListener("put",e=>{try{const m=JSON.parse(e.data);if(m.data&&typeof m.data==="object"){
-    map={...DEF,...(m.data.states||m.data)};
+    map=sanitizeMap(m.data.states||m.data);
     notes={...(m.data.notes||{})};
     status="live";render();
   }}catch(err){}});
   es.addEventListener("patch",e=>{try{const m=JSON.parse(e.data);if(m.data){
-    if(m.data.states)map={...map,...m.data.states};
+    if(m.data.states)map=sanitizeMap({...map,...m.data.states});
     if(m.data.notes)notes={...notes,...m.data.notes};
     status="live";render();
   }}catch(err){}});
@@ -180,7 +192,7 @@ function listenChat(){
   if(chatEs)chatEs.close();
   chatEs=new EventSource(dbUrl.replace(/\/$/,"")+"/chat.json");
   chatEs.addEventListener("put",e=>{try{const m=JSON.parse(e.data);if(m.data&&typeof m.data==="object"){messages=Object.values(m.data).sort((a,b)=>a.ts-b.ts);render();scrollChat();}else if(!m.data){messages=[];}}catch(err){}});
-  chatEs.addEventListener("patch",e=>{try{const m=JSON.parse(e.data);if(m.data){const newMsgs=Object.values(m.data);messages=[...messages,...newMsgs].sort((a,b)=>a.ts-b.ts);render();scrollChat();}}catch(err){}});
+  chatEs.addEventListener("patch",e=>{try{const m=JSON.parse(e.data);if(m.data){const newMsgs=Object.values(m.data);const allMsgs=[...messages,...newMsgs];const seen=new Set();const deduped=allMsgs.filter(msg=>{const key=msg.ts+"|"+msg.user+"|"+msg.text;if(seen.has(key))return false;seen.add(key);return true;}).sort((a,b)=>a.ts-b.ts);messages=deduped;render();scrollChat();}}catch(err){}});
 }
 
 function scrollChat(){setTimeout(()=>{const el=document.getElementById("chat-msgs");if(el)el.scrollTop=el.scrollHeight;},50);}
@@ -191,7 +203,7 @@ async function init(){
   try{
     status="connecting";render();
     const d=await fbGet();
-    map={...DEF,...(d.states||d)};
+    map=sanitizeMap(d.states||d);
     notes={...(d.notes||{})};
     messages=await fbGetChat();
     status="live";render();listen();listenChat();
@@ -204,7 +216,12 @@ function schedSaveNote(id,txt){clearTimeout(noteTimer);noteTimer=setTimeout(asyn
 async function sendMessage(txt){
   if(!txt.trim()||!currentUser)return;
   const msg={user:currentUser,text:txt.trim(),ts:Date.now()};
-  try{await fbPushMsg(msg);}catch(e){console.error(e);}
+  // Add message locally immediately so it shows up without waiting for SSE
+  messages=[...messages,msg].sort((a,b)=>a.ts-b.ts);
+  markRead();render();scrollChat();
+  // Re-focus input after render
+  setTimeout(()=>{const inp=document.getElementById("chat-in");if(inp)inp.focus();},30);
+  try{await fbPushMsg(msg);}catch(e){console.error("Error enviando mensaje:",e);}
 }
 
 // ── Export PNG ──
@@ -216,8 +233,10 @@ function exportPNG(){
       const ROWS=Math.ceil(SPACES.length/2),GH=ROWS*(CH+10),TH=HH+SH+LH+GH+48;
       const today=new Date().getDay(),tIds=WEEKLY[today]||[];
       const dStr=new Date().toLocaleDateString("es-CL",{weekday:"long",day:"numeric",month:"long"});
-      const avg=Object.values(map).reduce((a,b)=>a+b,0)/Object.values(map).length;
-      const pct=Math.round((avg/5)*100);
+      const spaceIds=SPACES.map(s=>s.id);
+      const vals=spaceIds.map(id=>parseInt(map[id])||0);
+      const avg=vals.length>0?vals.reduce((a,b)=>a+b,0)/vals.length:0;
+      const pct=Math.round((avg/5)*100)||0;
       const sc2=avg>=4?"#6C63FF":avg>=3?"#22C55E":avg>=2?"#EAB308":avg>=1?"#F97316":"#EF4444";
       const cv=document.createElement("canvas");cv.width=W*sc;cv.height=TH*sc;
       const ctx=cv.getContext("2d");ctx.scale(sc,sc);
@@ -263,11 +282,11 @@ function renderUserPicker(){
     <div class="user-title">¿Quién eres?</div>
     <div class="user-sub">Elige tu perfil para continuar</div>
     <div class="user-options">
-      <div class="user-opt" id="u-Cris" style="border-color:#6C63FF">
+      <div class="user-opt" id="u-Cris" style="border-color:#7B9DB4">
         <div class="user-opt-name">🧔 Cris</div>
         <div class="user-opt-sub">entrar como Cris</div>
       </div>
-      <div class="user-opt" id="u-Syl" style="border-color:#FF6B9D">
+      <div class="user-opt" id="u-Syl" style="border-color:#6C63FF">
         <div class="user-opt-name">👩 Syl</div>
         <div class="user-opt-sub">entrar como Syl</div>
       </div>
@@ -275,7 +294,7 @@ function renderUserPicker(){
   </div></div>`;
   ["Cris","Syl"].forEach(u=>{
     document.getElementById("u-"+u).addEventListener("click",()=>{
-      currentUser=u;localStorage.setItem("prisma-user",u);init();
+      currentUser=u;safeSet("prisma-user",u);init();
     });
   });
 };
@@ -300,14 +319,16 @@ function render(){
     document.getElementById("bsc").onclick=()=>{
       const v=document.getElementById("dbi").value.trim();
       if(!v.startsWith("https://")){document.getElementById("cerr").style.display="block";return;}
-      dbUrl=v;localStorage.setItem("prisma-db-url",dbUrl);if(es)es.close();init();
+      dbUrl=v;safeSet("prisma-db-url",dbUrl);if(es)es.close();init();
     };
     return;
   }
 
   const today=new Date().getDay(),tIds=WEEKLY[today]||[],dn=DAYS[today];
-  const avg=Object.values(map).reduce((a,b)=>a+b,0)/Object.values(map).length;
-  const pct=Math.round((avg/5)*100);
+  const spaceIds=SPACES.map(s=>s.id);
+  const vals=spaceIds.map(id=>parseInt(map[id])||0);
+  const avg=vals.length>0?vals.reduce((a,b)=>a+b,0)/vals.length:0;
+  const pct=Math.round((avg/5)*100)||0;
   const sc=avg>=4?"#6C63FF":avg>=3?"#22C55E":avg>=2?"#EAB308":avg>=1?"#F97316":"#EF4444";
   const crit=SPACES.filter(s=>map[s.id]===0);
 
@@ -364,13 +385,13 @@ function render(){
       ${STATES.map(st=>`<div class="legend-row"><span class="legend-sym">${st.symbol}</span><span class="legend-txt">${st.label}</span></div>`).join("")}
     </div>
     <button class="btn-export" id="bex" ${exporting?"disabled":""}>
-      <span>${exporting?"⏳":"📥"}</span>${exporting?"generando png...":"exportar para OneNote"}
+      <span>${exporting?"⏳":"📸"}</span>${exporting?"generando imagen...":"sacar pantallazo"}
     </button>
     <button class="btn-sm" id="bcfg">⚙ cambiar base de datos · usuario: ${currentUser}</button>
     <div class="hint">toca cualquier espacio para actualizar su estado</div>
   </div>
   ${chatOpen?`<div class="chat-overlay" id="chat-ov">
-    <div class="chat-sheet">
+    <div class="chat-sheet" style="--me-color:${userColor}">
       <div class="chat-head">
         <div class="chat-head-row">
           <div class="chat-title">💬 Chat del Hogar</div>
@@ -426,7 +447,7 @@ function render(){
   // events
   document.querySelectorAll(".card").forEach(el=>el.addEventListener("click",()=>{picking=el.dataset.id;viewingNotes=false;render();}));
   document.getElementById("bex")?.addEventListener("click",exportPNG);
-  document.getElementById("bcfg")?.addEventListener("click",()=>{currentUser="";localStorage.removeItem("prisma-user");render();});
+  document.getElementById("bcfg")?.addEventListener("click",()=>{currentUser="";try{localStorage.removeItem("prisma-user");}catch(e){}render();});
   document.getElementById("ov")?.addEventListener("click",e=>{if(e.target.id==="ov"){picking=null;viewingNotes=false;render();}});
   document.getElementById("bcl")?.addEventListener("click",()=>{picking=null;viewingNotes=false;render();});
   document.getElementById("bnote")?.addEventListener("click",()=>{viewingNotes=true;render();setTimeout(()=>document.getElementById("note-ta")?.focus(),50);});
@@ -444,18 +465,18 @@ function render(){
   document.getElementById("bchat")?.addEventListener("click",()=>{chatOpen=true;markRead();render();scrollChat();});
   document.getElementById("bcc")?.addEventListener("click",()=>{chatOpen=false;render();});
   document.getElementById("chat-ov")?.addEventListener("click",e=>{if(e.target.id==="chat-ov"){chatOpen=false;render();}});
-  const chatIn=document.getElementById("chat-in");
   const doSend=async()=>{
-    const txt=chatIn?.value||"";if(!txt.trim())return;
-    chatIn.value="";
+    const inp=document.getElementById("chat-in");
+    const txt=inp?.value||"";if(!txt.trim())return;
+    inp.value="";
     await sendMessage(txt);
   };
   document.getElementById("chat-send")?.addEventListener("click",doSend);
-  chatIn?.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();doSend();}});
+  document.getElementById("chat-in")?.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();doSend();}});
   if(chatOpen)scrollChat();
 }
 
+// Startup: always show something immediately
 init();
-</script>
 </body>
 </html>
