@@ -188,12 +188,40 @@ function listen(){
 function listenChat(){
   if(chatEs)chatEs.close();
   chatEs=new EventSource(dbUrl.replace(/\/$/,"")+"/chat.json");
-  chatEs.addEventListener("put",e=>{try{const m=JSON.parse(e.data);if(m.data&&typeof m.data==="object"){messages=Object.values(m.data).sort((a,b)=>a.ts-b.ts);render();scrollChat();}else if(!m.data){messages=[];}}catch(err){}});
-  // FIX: deduplicate messages to avoid duplicates from local optimistic add + SSE confirmation
-  chatEs.addEventListener("patch",e=>{try{const m=JSON.parse(e.data);if(m.data){const newMsgs=Object.values(m.data);const allMsgs=[...messages,...newMsgs];const seen=new Set();const deduped=allMsgs.filter(msg=>{const key=msg.ts+"|"+msg.user+"|"+msg.text;if(seen.has(key))return false;seen.add(key);return true;}).sort((a,b)=>a.ts-b.ts);messages=deduped;render();scrollChat();}}catch(err){}});
+  chatEs.addEventListener("put",e=>{try{const m=JSON.parse(e.data);if(m.data&&typeof m.data==="object"){messages=Object.values(m.data).sort((a,b)=>a.ts-b.ts);if(chatOpen){renderChat();scrollChat();}else{render();}}else if(!m.data){messages=[];}}catch(err){}});
+  chatEs.addEventListener("patch",e=>{try{const m=JSON.parse(e.data);if(m.data){const newMsgs=Object.values(m.data);const allMsgs=[...messages,...newMsgs];const seen=new Set();const deduped=allMsgs.filter(msg=>{const key=msg.ts+"|"+msg.user+"|"+msg.text;if(seen.has(key))return false;seen.add(key);return true;}).sort((a,b)=>a.ts-b.ts);messages=deduped;if(chatOpen){renderChat();scrollChat();}else{render();}}}catch(err){}});
 }
 
 function scrollChat(){setTimeout(()=>{const el=document.getElementById("chat-msgs");if(el)el.scrollTop=el.scrollHeight;},50);}
+
+// Lightweight chat update: only re-renders message list + unread badge without destroying the whole DOM
+function renderChat(){
+  const userColor=USERS[currentUser]?.color||"#6C63FF";
+  const userAvatar=USERS[currentUser]?.avatar||"👤";
+  const msgsEl=document.getElementById("chat-msgs");
+  if(msgsEl){
+    msgsEl.innerHTML=messages.length===0
+      ?`<div style="text-align:center;padding:40px 0;font-family:'DM Mono',monospace;font-size:12px;color:#ccc">sin mensajes aún<br/>¡escribe el primero!</div>`
+      :messages.map(m=>{
+        const isMe=m.user===currentUser;
+        const u=USERS[m.user]||{color:"#888",avatar:"👤"};
+        const t=new Date(m.ts).toLocaleTimeString("es-CL",{hour:"2-digit",minute:"2-digit"});
+        return`<div class="msg ${isMe?"me":"them"}">
+          ${!isMe?`<div class="msg-author">${u.avatar} ${m.user}</div>`:""}
+          <div class="msg-bubble">${escHtml(m.text)}</div>
+          <div class="msg-time">${t}</div>
+        </div>`;
+      }).join("");
+  }
+  // Update unread badge on main screen too
+  const bchat=document.getElementById("bchat");
+  if(bchat){
+    const unread=unreadCount();
+    bchat.innerHTML=`💬${unread>0?`<span class="unread">${unread>9?"9+":unread}</span>`:""}`;
+  }
+}
+
+function escHtml(s){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
 
 async function init(){
   if(!currentUser){render();return;}
@@ -216,7 +244,9 @@ async function sendMessage(txt){
   if(!txt.trim()||!currentUser)return;
   const msg={user:currentUser,text:txt.trim(),ts:Date.now()};
   messages=[...messages,msg].sort((a,b)=>a.ts-b.ts);
-  markRead();render();scrollChat();
+  markRead();
+  renderChat();
+  scrollChat();
   setTimeout(()=>{const inp=document.getElementById("chat-in");if(inp)inp.focus();},30);
   try{await fbPushMsg(msg);}catch(e){console.error(e);}
 }
@@ -408,7 +438,7 @@ function render(){
           const t=new Date(m.ts).toLocaleTimeString("es-CL",{hour:"2-digit",minute:"2-digit"});
           return`<div class="msg ${isMe?"me":"them"}">
             ${!isMe?`<div class="msg-author">${u.avatar} ${m.user}</div>`:""}
-            <div class="msg-bubble">${m.text.replace(/</g,"&lt;")}</div>
+            <div class="msg-bubble">${escHtml(m.text)}</div>
             <div class="msg-time">${t}</div>
           </div>`;
         }).join("")}
