@@ -219,6 +219,7 @@ function sendMessage(txt){
   var msg={user:currentUser,text:txt.trim(),ts:Date.now()};
   messages.push(msg);
   render();scrollChat();
+  setTimeout(function(){var inp=document.getElementById("chat-in");if(inp)inp.focus();},30);
   fbPushMsg(msg).catch(function(e){console.error(e);});
 }
 
