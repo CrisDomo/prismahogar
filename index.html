@@ -164,32 +164,33 @@ function listen(){
   es.onerror=function(){status="error";render();setTimeout(function(){if(dbUrl)listen();},4000);};
 }
 
-function isMsgObj(o){return o&&typeof o==="object"&&"user" in o&&"text" in o&&"ts" in o;}
-function extractMsgs(data){
-  if(!data||typeof data!=="object")return[];
-  // Si data ES directamente un mensaje {user,text,ts}, envolverlo
-  if(isMsgObj(data))return[data];
-  // Si es el objeto raíz { "-key": {user,text,ts}, ... }
-  var vals=Object.values(data);
-  // Filtrar solo los que son mensajes válidos (descartar strings/numbers sueltos)
-  return vals.filter(function(v){return isMsgObj(v);});
+function validMsg(v){return v&&typeof v==="object"&&v.user&&v.text&&v.ts;}
+function addMsgsUnique(incoming){
+  var keys={};for(var i=0;i<messages.length;i++)keys[messages[i].ts+"|"+messages[i].user]=true;
+  for(var j=0;j<incoming.length;j++){var msg=incoming[j];if(validMsg(msg)&&!keys[msg.ts+"|"+msg.user]){messages.push(msg);keys[msg.ts+"|"+msg.user]=true;}}
+  messages.sort(function(a,b){return a.ts-b.ts;});
 }
 function listenChat(){
   if(chatEs)chatEs.close();
   chatEs=new EventSource(cleanUrl()+"/chat.json");
   chatEs.addEventListener("put",function(e){try{
     var m=JSON.parse(e.data);
-    if(m.data){messages=extractMsgs(m.data).sort(function(a,b){return a.ts-b.ts;});}
-    else{messages=[];}
+    var path=m.path||"/";
+    if(path==="/"){
+      if(!m.data){messages=[];}
+      else{messages=Object.values(m.data).filter(validMsg).sort(function(a,b){return a.ts-b.ts;});}
+    }else{
+      if(validMsg(m.data)){addMsgsUnique([m.data]);}
+    }
     render();scrollChat();
   }catch(err){}});
-  chatEs.addEventListener("patch",function(e){try{var m=JSON.parse(e.data);if(m.data){
-    var newMsgs=extractMsgs(m.data);
-    var dominated={};for(var i=0;i<messages.length;i++){var x=messages[i];dominated[x.ts+"|"+x.user]=true;}
-    for(var j=0;j<newMsgs.length;j++){if(!dominated[newMsgs[j].ts+"|"+newMsgs[j].user])messages.push(newMsgs[j]);}
-    messages.sort(function(a,b){return a.ts-b.ts;});
-    render();scrollChat();
-  }}catch(err){}});
+  chatEs.addEventListener("patch",function(e){try{
+    var m=JSON.parse(e.data);
+    if(m.data&&typeof m.data==="object"){
+      addMsgsUnique(Object.values(m.data).filter(validMsg));
+      render();scrollChat();
+    }
+  }catch(err){}});
 }
 
 function scrollChat(){setTimeout(function(){var el=document.getElementById("chat-msgs");if(el)el.scrollTop=el.scrollHeight;},60);}
